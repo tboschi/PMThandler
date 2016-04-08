@@ -1,0 +1,90 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <algorithm>
+
+#include "PMTH.h"
+#include "TH1F.h"
+#include "TBranch.h"
+#include "TRandom3.h"
+
+struct position
+{
+	float x;
+	float y;
+	float z;
+};
+
+int main(int argc, char** argv)
+{
+
+	std::string def = "passTD";
+	if (argc > 1) def = argv[1];
+	std::ifstream fin(def.c_str());
+	std::stringstream ssL;
+	std::string Line, Path, OTree, NTree, rOut;
+
+	while (getline(fin, Line))
+	{
+		if (Line[0] == '#') continue;
+		else
+		{
+			ssL.str("");
+			ssL.clear();
+			ssL << Line;
+			ssL >> Path;
+			ssL >> OTree;
+			ssL >> NTree;
+			ssL >> rOut;
+		}
+	}
+	fin.close();
+
+	TFile* oldF = new TFile(Path.c_str());
+	TTree* oldtree = (TTree*)oldF->Get(OTree.c_str());
+	PMTH* PMT = new PMTH(oldtree);
+
+	oldtree->SetBranchStatus("*", 1);
+	oldtree->SetBranchStatus("Channels", 0);
+	oldtree->SetBranchStatus("PMTID", 0);
+	oldtree->SetBranchStatus("Data", 0);
+
+	unsigned int data[40000];
+	unsigned int j;
+	position pos;
+	
+	TFile* newF = new TFile(rOut.c_str(), "RECREATE");
+	if (newF->IsZombie()) return 1;
+	newF->cd();
+
+	TTree * newtree = oldtree->CloneTree(0);
+	newtree->SetName("NTree.c_str()");
+	TBranch* bbb;
+	bbb = newtree->Branch("Channel", &j, "j/i");
+	bbb = newtree->Branch("xyz", &pos, "x/F:y/F:z/F");
+	bbb = newtree->Branch("Data", data, "data[40000]/i");
+
+	TRandom3 * Rand = new TRandom3;
+
+	int n = PMT->fChain->GetEntriesFast();
+	std::cout << "GetEntriesFast " << n << std::endl;
+	for (int i = 0; i < n; i++)
+	{
+		int ret = PMT->GetEntryAll(i);
+		for (j = 0; j < 4; j++)
+		{
+			pos.x = Rand->Gaus(0, 1);
+			pos.y = Rand->Gaus(0, 1);
+			pos.z = Rand->Gaus(0, 1);
+			std::copy((PMT->Data)+40000*j, (PMT->Data)+40000*(j+1), data);
+			newtree->Fill();
+		}
+	}
+
+	oldF->Close();
+	newF->Write();
+	newF->Close();
+
+	return 0;
+}

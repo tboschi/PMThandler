@@ -1,0 +1,15 @@
+OUT = TExtracter
+IN = TreeExtracter
+
+ROOT = -pthread -m64 -I/usr/include/root -L/usr/lib64/root -lCore -lCint -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lTree -lRint -lPostscript -lMatrix -lMathCore -lThread -pthread -lm -ldl -rdynamic	
+
+all:	ciao
+	g++ $(IN).cpp $(ROOT) -I./ -L./ -lPMTH -fPIC -o $(OUT)
+
+
+clean:
+	rm -f $(OUT)
+	rm -f libPMTData8*
+
+libPMTH:
+	g++ -shared -fPIC -I./ PMTH.C -o libPMTH.so $(ROOT)
